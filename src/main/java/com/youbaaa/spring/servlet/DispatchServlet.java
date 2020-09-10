@@ -28,7 +28,7 @@ public class DispatchServlet extends HttpServlet {
     private Properties properties = new Properties();
     private List<String> className = new ArrayList<>();
     private Map<String, Object> ioc = new HashMap<>();
-    private Map<String, Method> handMapping = new HashMap<>();
+    private Map<String, Method> handlerMapping = new HashMap<>();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -37,8 +37,51 @@ public class DispatchServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req, resp);
+
+        try {
+            doDispatcherServlet(req, resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+            resp.getWriter().write("500 Exception");
+        }
     }
+
+    private void doDispatcherServlet(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        if (handlerMapping.isEmpty()) {
+            return;
+        }
+        String url = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        url = url.replace(contextPath, "").replaceAll("/+", "/");
+        if (!handlerMapping.containsKey(url)) {
+            resp.getWriter().write("404 not found");
+            return;
+        }
+        Method method = handlerMapping.get(url);
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        Map<String, String[]> parameterMap = req.getParameterMap();
+        Object[] parameterValues = new Object[parameterTypes.length];
+        for (int i = 0; i < parameterTypes.length; i++) {
+            Class<?> parameterType = parameterTypes[i];
+            if (parameterType == HttpServletRequest.class) {
+                parameterValues[i] = req;
+                continue;
+            } else if (parameterType == HttpServletResponse.class) {
+                parameterValues[i] = resp;
+                continue;
+            } else if (parameterType == String.class) {
+                for (Map.Entry<String, String[]> param : parameterMap.entrySet()) {
+                    String value = Arrays.toString(param.getValue())
+                            .replaceAll("\\[|\\]", "")
+                            .replaceAll(",//s", ",");
+                    parameterValues[i] = value;
+                }
+            }
+        }
+        String beanName = lowerFirstCase(method.getDeclaringClass().getSimpleName());
+        method.invoke(this.ioc.get(beanName), parameterValues);
+    }
+
 
     @Override
     public void init(ServletConfig config) throws ServletException {
@@ -75,9 +118,9 @@ public class DispatchServlet extends HttpServlet {
                 if (!method.isAnnotationPresent(RequestMappingX.class)) {
                     continue;
                 }
-                RequestMappingX requestMappingX = aClass.getAnnotation(RequestMappingX.class);
-                String url = ("/" + baseUrl + requestMappingX.value().trim()).replace("/+", "/");
-                handMapping.put(url, method);
+                RequestMappingX requestMappingX = method.getAnnotation(RequestMappingX.class);
+                String url = ("/" + baseUrl + "/" + requestMappingX.value().trim()).replaceAll("/+", "/");
+                handlerMapping.put(url, method);
             }
         }
     }
@@ -104,10 +147,7 @@ public class DispatchServlet extends HttpServlet {
                     e.printStackTrace();
                 }
             }
-
-
         }
-
     }
 
     private void doInstance() {
@@ -141,12 +181,11 @@ public class DispatchServlet extends HttpServlet {
     }
 
     private void doScanner(String packageName) {
-        URL resource = this.getClass().getClassLoader().getResource("/" + packageName.replace("\\.", "/"));
-        assert resource != null;
-        File dir = new File(resource.getFile());
+        URL url = this.getClass().getClassLoader().getResource("/" + packageName.replaceAll("\\.", "/"));
+        File dir = new File(url.getFile());
         for (File file : Objects.requireNonNull(dir.listFiles())) {
             if (file.isDirectory()) {
-                doScanner(packageName + file.getName());
+                doScanner(packageName + "." + file.getName());
             } else {
                 className.add(packageName + "." + file.getName().replace(".class", "").trim());
             }
@@ -172,7 +211,9 @@ public class DispatchServlet extends HttpServlet {
     }
 
     /**
-     * 字符穿首字母小写
+     * 字符串首字母小写
+     * 注意这里默认类名是大写的
+     * 小写这里需要 判断
      *
      * @param str
      * @return

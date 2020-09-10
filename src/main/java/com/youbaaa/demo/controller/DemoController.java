@@ -23,6 +23,7 @@ public class DemoController {
     @AutowiredX
     DemoServer demoServer;
 
+    @RequestMappingX("query")
     public void query(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.getWriter().write("hello");
     }
