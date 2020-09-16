@@ -18,14 +18,14 @@ public class DemoServer {
     private ThreadLocal<Integer> currentUser = ThreadLocal.withInitial(() -> null);
 
     public void threadLocal() {
-        //设置用户信息之前先查询一次ThreadLocal中的用户信息
+        //设置信息之前先查询一次ThreadLocal中的信息
         String before = Thread.currentThread().getName() + ":" + currentUser.get();
-        //设置用户信息到ThreadLocal
+        //设置信息到ThreadLocal
         currentUser.set(1);
-        //设置用户信息之后再查询一次ThreadLocal中的用户信息
+        //设置信息之后再查询一次ThreadLocal中的信息
         String after = Thread.currentThread().getName() + ":" + currentUser.get();
         //汇总输出两次查询结果
-        Map result = new HashMap();
+        Map<String, Object> result = new HashMap<>();
         result.put("before", before);
         result.put("after", after);
         System.out.println(result);
