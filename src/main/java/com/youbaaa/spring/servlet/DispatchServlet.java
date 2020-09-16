@@ -138,7 +138,7 @@ public class DispatchServlet extends HttpServlet {
                 AutowiredX autowiredX = field.getAnnotation(AutowiredX.class);
                 String beanName = autowiredX.value().trim();
                 if ("".equals(beanName)) {
-                    beanName = field.getType().getName();
+                    beanName = lowerFirstCase(field.getType().getSimpleName());
                 }
                 field.setAccessible(true);
                 try {

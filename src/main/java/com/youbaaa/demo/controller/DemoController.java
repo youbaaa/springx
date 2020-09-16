@@ -25,6 +25,7 @@ public class DemoController {
 
     @RequestMappingX("query")
     public void query(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.getWriter().write("hello");
+        demoServer.threadLocal();
+        response.getWriter().write("success!");
     }
 }
